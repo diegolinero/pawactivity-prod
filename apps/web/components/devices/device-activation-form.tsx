@@ -7,15 +7,15 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 
-type DeviceActivationFormType = z.infer<typeof deviceActivationSchema>;
+type DeviceActivationFormValues = z.infer<typeof deviceActivationSchema>;
 
 export function DeviceActivationForm() {
   const [formError, setFormError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DeviceActivationFormValues>({
     resolver: zodResolver(deviceActivationSchema),
     defaultValues: {
       serialNumber: '',
-    } satisfies DeviceActivationFormType,
+    },
   });
 
   const onSubmit = handleSubmit(async (values) => {

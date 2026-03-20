@@ -8,12 +8,12 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 
-type PetFormType = z.infer<typeof petSchema>;
+type PetFormValues = z.infer<typeof petSchema>;
 
 type PetFormProps = {
   action: string;
   submitLabel: string;
-  defaultValues?: Partial<PetFormType>;
+  defaultValues?: Partial<PetFormValues>;
 };
 
 export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
@@ -22,7 +22,7 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm({
+  } = useForm<PetFormValues>({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: defaultValues?.name ?? '',

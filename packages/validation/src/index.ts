@@ -5,7 +5,7 @@ export const registerSchema = z.object({
   password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().optional().nullable(),
-  timezone: z.string().min(1).default('UTC'),
+  timezone: z.string().min(1),
 });
 
 export const loginSchema = z.object({

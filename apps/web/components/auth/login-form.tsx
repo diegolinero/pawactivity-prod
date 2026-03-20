@@ -8,17 +8,17 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { loginSchema } from '@pawactivity/validation';
 
-type LoginFormType = z.infer<typeof loginSchema>;
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: '',
       password: '',
-    } satisfies LoginFormType,
+    },
   });
 
   const onSubmit = handleSubmit(async (values) => {
