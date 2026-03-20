@@ -1,16 +1,19 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { petSchema, type PetInput } from '@pawactivity/validation';
+import { petSchema } from '@pawactivity/validation';
 import { useForm } from 'react-hook-form';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+
+type PetFormValues = z.infer<typeof petSchema>;
 
 type PetFormProps = {
   action: string;
   submitLabel: string;
-  defaultValues?: Partial<PetInput>;
+  defaultValues?: Partial<PetFormValues>;
 };
 
 export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
@@ -19,7 +22,7 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<PetInput>({
+  } = useForm<PetFormValues>({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: defaultValues?.name ?? '',

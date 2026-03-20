@@ -1,15 +1,21 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { deviceActivationSchema, type DeviceActivationInput } from '@pawactivity/validation';
+import { deviceActivationSchema } from '@pawactivity/validation';
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
+
+type DeviceActivationFormValues = z.infer<typeof deviceActivationSchema>;
 
 export function DeviceActivationForm() {
   const [formError, setFormError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DeviceActivationInput>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DeviceActivationFormValues>({
     resolver: zodResolver(deviceActivationSchema),
+    defaultValues: {
+      serialNumber: '',
+    },
   });
 
   const onSubmit = handleSubmit(async (values) => {
