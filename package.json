@@ -1,0 +1,25 @@
+{
+  "name": "pawactivity-platform",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "format": "turbo run format",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:migrate:status": "prisma migrate status",
+    "db:push": "prisma db push"
+  },
+  "devDependencies": {
+    "prisma": "^6.5.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.2"
+  }
+}
