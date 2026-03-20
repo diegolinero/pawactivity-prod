@@ -12,6 +12,20 @@ export type AuthTokens = {
   refreshToken: string;
 };
 
+export type AuthSessionInfo = {
+  sessionId: string;
+  deviceName: string | null;
+  expiresAt: string;
+};
+
+export type AuthResponse = AuthTokens & {
+  tokenType: 'Bearer';
+  accessTokenExpiresInSeconds: number;
+  refreshTokenExpiresInSeconds: number;
+  session: AuthSessionInfo;
+  user: AuthUser;
+};
+
 export type PetSex = 'male' | 'female' | 'unknown';
 export type DeviceStatus = 'inactive' | 'active' | 'assigned';
 export type ActivityType = 'rest' | 'walk' | 'run';
@@ -82,4 +96,14 @@ export type ActivityTimelineItem = {
   endedAt: string;
   durationSeconds: number;
   confidence: number | null;
+};
+
+export type ActivitySyncResponse = {
+  success: true;
+  syncLogId: string;
+  recordsReceived: number;
+  storedEvents: number;
+  skippedDuplicates: number;
+  syncedAt: string;
+  updatedDates: string[];
 };

@@ -108,6 +108,7 @@ export class AuthService {
   private async createSession(userId: string, email: string, meta: RequestMeta, updateLastLogin = false) {
     const refreshExpiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRES_IN') ?? '7d';
     const accessExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRES_IN') ?? '15m';
+    const refreshExpiresAt = this.addDuration(refreshExpiresIn);
 
     const provisionalSession = await this.prisma.authSession.create({
       data: {
@@ -116,7 +117,7 @@ export class AuthService {
         deviceName: meta.deviceName,
         userAgent: meta.userAgent,
         ipAddress: meta.ipAddress,
-        expiresAt: this.addDuration(refreshExpiresIn),
+        expiresAt: refreshExpiresAt,
       },
     });
 
@@ -140,7 +141,7 @@ export class AuthService {
       where: { id: provisionalSession.id },
       data: {
         refreshTokenHash: await argon2.hash(refreshToken),
-        expiresAt: this.addDuration(refreshExpiresIn),
+        expiresAt: refreshExpiresAt,
       },
     });
 
@@ -149,8 +150,16 @@ export class AuthService {
     }
 
     return {
+      tokenType: 'Bearer' as const,
       accessToken,
       refreshToken,
+      accessTokenExpiresInSeconds: this.durationToSeconds(accessExpiresIn),
+      refreshTokenExpiresInSeconds: this.durationToSeconds(refreshExpiresIn),
+      session: {
+        sessionId: provisionalSession.id,
+        deviceName: meta.deviceName ?? null,
+        expiresAt: refreshExpiresAt.toISOString(),
+      },
       user: await this.me(userId),
     };
   }
@@ -185,6 +194,19 @@ export class AuthService {
     }
     now.setDate(now.getDate() + 7);
     return now;
+  }
+
+  private durationToSeconds(duration: string) {
+    if (duration.endsWith('d')) {
+      return Number(duration.slice(0, -1)) * 86400;
+    }
+    if (duration.endsWith('h')) {
+      return Number(duration.slice(0, -1)) * 3600;
+    }
+    if (duration.endsWith('m')) {
+      return Number(duration.slice(0, -1)) * 60;
+    }
+    return 7 * 86400;
   }
 }
 

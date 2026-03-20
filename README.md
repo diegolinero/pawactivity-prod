@@ -197,3 +197,8 @@ La asignación de dispositivo se hace desde la pantalla de detalle de la mascota
 - manejo más robusto de estados de sesión/refresh
 - pulido final de UX y mensajes de error
 - preparación de release/staging/production
+
+## Documentación de integración móvil
+
+- `docs/android-api-integration.md`
+- `docs/mobile-sync-contract.md`

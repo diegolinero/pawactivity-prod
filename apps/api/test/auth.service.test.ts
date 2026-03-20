@@ -54,10 +54,15 @@ test('register/login/me/logout flow keeps session state consistent', async () =>
   const { service, sessions } = createAuthService();
   const registered = await service.register({ email: 'a@a.com', password: 'password123', firstName: 'Ana' } as any, {});
   assert.equal(typeof registered.accessToken, 'string');
+  assert.equal(registered.tokenType, 'Bearer');
+  assert.equal(typeof registered.accessTokenExpiresInSeconds, 'number');
+  assert.equal(typeof registered.refreshTokenExpiresInSeconds, 'number');
+  assert.equal(typeof registered.session.sessionId, 'string');
   assert.equal(sessions.length, 1);
 
   const logged = await service.login({ email: 'a@a.com', password: 'password123' } as any, {});
   assert.equal(typeof logged.refreshToken, 'string');
+  assert.equal(logged.session.sessionId, sessions[1].id);
 
   const me = await service.me(logged.user.id);
   assert.equal(me.email, 'a@a.com');
