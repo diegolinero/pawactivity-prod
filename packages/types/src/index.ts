@@ -14,6 +14,7 @@ export type AuthTokens = {
 
 export type PetSex = 'male' | 'female' | 'unknown';
 export type DeviceStatus = 'inactive' | 'active' | 'assigned';
+export type ActivityType = 'rest' | 'walk' | 'run';
 
 export type DeviceAssignedPet = {
   id: string;
@@ -45,4 +46,40 @@ export type PetSummary = {
   createdAt: string;
   updatedAt: string;
   activeDevice: DeviceSummary | null;
+};
+
+export type DailyActivitySummary = {
+  date: string;
+  timezone: string;
+  restSeconds: number;
+  walkSeconds: number;
+  runSeconds: number;
+  totalActiveSeconds: number;
+  hasData: boolean;
+};
+
+export type WeeklyActivityResponse = {
+  startDate: string;
+  endDate: string;
+  days: DailyActivitySummary[];
+};
+
+export type MonthlyActivityResponse = {
+  month: string;
+  days: DailyActivitySummary[];
+  totals: {
+    restSeconds: number;
+    walkSeconds: number;
+    runSeconds: number;
+    totalActiveSeconds: number;
+  };
+};
+
+export type ActivityTimelineItem = {
+  id: string;
+  activityType: ActivityType;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  confidence: number | null;
 };

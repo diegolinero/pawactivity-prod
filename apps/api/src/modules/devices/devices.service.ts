@@ -86,16 +86,7 @@ export class DevicesService {
   }
 
   async getStatus(userId: string, deviceId: string) {
-    const device = await this.getById(userId, deviceId);
-
-    return {
-      id: device.id,
-      status: device.status,
-      batteryLevel: device.batteryLevel,
-      lastSeenAt: device.lastSeenAt,
-      activatedAt: device.activatedAt,
-      assignedPet: device.assignedPet,
-    };
+    return this.getById(userId, deviceId);
   }
 
   async assignToPet(userId: string, petId: string, deviceId: string) {

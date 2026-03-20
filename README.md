@@ -127,6 +127,13 @@ pnpm dev
 ### Activity Sync
 - `POST /v1/activity/sync`
 
+### Activity Read
+- `GET /v1/pets/:petId/activity/daily`
+- `GET /v1/pets/:petId/activity/weekly`
+- `GET /v1/pets/:petId/activity/monthly`
+- `GET /v1/pets/:petId/activity/history`
+- `GET /v1/pets/:petId/activity/timeline`
+
 ## Pantallas implementadas
 
 - `/login`
@@ -137,6 +144,7 @@ pnpm dev
 - `/pets/[petId]`
 - `/pets/[petId]/edit`
 - `/devices`
+- `/history`
 
 ## Flujo funcional actual
 
@@ -147,6 +155,7 @@ pnpm dev
 5. Puede asignar un dispositivo a una mascota desde el detalle de esa mascota.
 6. Puede ver el estado básico del dispositivo asociado.
 7. La app móvil ya puede enviar lotes de actividad al backend para almacenarlos y resumirlos por día.
+8. El dashboard y el historial consumen esos datos para mostrar actividad diaria, semanal y timeline.
 
 ## Decisión UX de esta fase
 
@@ -154,7 +163,7 @@ La asignación de dispositivo se hace desde la pantalla de detalle de la mascota
 
 ## Qué falta para la siguiente fase
 
-- endpoints de lectura de actividad para web privada
-- timeline o métricas simples por mascota
-- vistas de resumen diario/semanal/mensual
-- dashboard con consumo real de resúmenes diarios
+- hardening técnico (builds, typecheck, lint reales en CI)
+- manejo más robusto de estados de sesión/refresh
+- pulido final de UX y mensajes de error
+- preparación de release/staging/production

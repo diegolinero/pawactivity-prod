@@ -5,7 +5,7 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('pawactivity_access_token')?.value;
   const pathname = request.nextUrl.pathname;
 
-  const isPrivate = pathname.startsWith('/dashboard') || pathname.startsWith('/pets') || pathname.startsWith('/devices');
+  const isPrivate = pathname.startsWith('/dashboard') || pathname.startsWith('/pets') || pathname.startsWith('/devices') || pathname.startsWith('/history');
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
   if (isPrivate && !token) {
@@ -20,5 +20,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/pets/:path*', '/devices/:path*', '/login', '/register'],
+  matcher: ['/dashboard/:path*', '/pets/:path*', '/devices/:path*', '/history/:path*', '/login', '/register'],
 };
