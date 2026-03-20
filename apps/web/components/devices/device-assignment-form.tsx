@@ -8,11 +8,15 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 
-type DeviceAssignmentFormValues = z.infer<typeof deviceAssignmentSchema>;
+type FormValues = z.infer<typeof deviceAssignmentSchema>;
 
 export function DeviceAssignmentForm({ petId, devices }: { petId: string; devices: DeviceSummary[] }) {
   const [formError, setFormError] = useState<string | null>(null);
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DeviceAssignmentFormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<FormValues>({
     resolver: zodResolver(deviceAssignmentSchema),
     defaultValues: {
       deviceId: '',

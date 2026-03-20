@@ -8,12 +8,16 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { registerSchema } from '@pawactivity/validation';
 
-type RegisterFormValues = z.infer<typeof registerSchema>;
+type FormValues = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormValues>({
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
       email: '',

@@ -8,12 +8,12 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 
-type PetFormValues = z.infer<typeof petSchema>;
+type FormValues = z.infer<typeof petSchema>;
 
 type PetFormProps = {
   action: string;
   submitLabel: string;
-  defaultValues?: Partial<PetFormValues>;
+  defaultValues?: Partial<FormValues>;
 };
 
 export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
@@ -22,7 +22,7 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<PetFormValues>({
+  } = useForm<FormValues>({
     resolver: zodResolver(petSchema),
     defaultValues: {
       name: defaultValues?.name ?? '',
@@ -31,7 +31,7 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
       weightKg: defaultValues?.weightKg ?? '',
       sex: defaultValues?.sex ?? 'unknown',
       photoUrl: defaultValues?.photoUrl ?? '',
-    } satisfies Partial<PetFormType>,
+    } satisfies Partial<FormValues>,
   });
 
   const onSubmit = handleSubmit(async (values) => {
