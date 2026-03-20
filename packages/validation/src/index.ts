@@ -29,9 +29,3 @@ export const deviceActivationSchema = z.object({
 export const deviceAssignmentSchema = z.object({
   deviceId: z.string().min(1, 'Debes seleccionar un dispositivo'),
 });
-
-export type RegisterInput = z.infer<typeof registerSchema>;
-export type LoginInput = z.infer<typeof loginSchema>;
-export type PetInput = z.infer<typeof petSchema>;
-export type DeviceActivationInput = z.infer<typeof deviceActivationSchema>;
-export type DeviceAssignmentInput = z.infer<typeof deviceAssignmentSchema>;

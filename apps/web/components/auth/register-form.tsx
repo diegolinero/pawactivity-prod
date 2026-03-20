@@ -4,15 +4,24 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import { registerSchema, type RegisterInput } from '@pawactivity/validation';
+import { registerSchema } from '@pawactivity/validation';
+
+type RegisterFormType = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterInput>({
+  const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(registerSchema),
-    defaultValues: { timezone: 'UTC' },
+    defaultValues: {
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      timezone: 'UTC',
+    } satisfies RegisterFormType,
   });
 
   const onSubmit = handleSubmit(async (values) => {
