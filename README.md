@@ -1,31 +1,128 @@
-# PawActivity
+# PawActivity Platform
 
-Base de arquitectura y producto para el proyecto web de PawActivity.
+Base técnica inicial del monorepo para la plataforma privada y la API de PawActivity.
 
-## Documentación principal
+## Qué incluye esta fase
 
-- [Arquitectura del proyecto](docs/architecture.md)
-- [Propuesta técnica concreta del MVP](docs/mvp-technical-proposal.md)
-- [Especificación técnica de implementación MVP](docs/mvp-implementation-spec.md)
+- `apps/web`: aplicación privada en Next.js con App Router.
+- `apps/api`: API en NestJS con auth base funcional.
+- `prisma/schema.prisma`: esquema inicial para PostgreSQL.
+- `packages/types`: tipos compartidos mínimos.
+- `packages/validation`: validaciones compartidas con Zod.
+- `packages/config`: configuración compartida base.
+- configuración de `pnpm workspaces`, `turbo`, TypeScript y ESLint.
 
-## Resumen ejecutivo
+## Estructura principal
 
-PawActivity debe separarse en cuatro piezas claras:
+```txt
+apps/
+  web/
+  api/
+packages/
+  types/
+  validation/
+  config/
+prisma/
+```
 
-1. **Marketing público** para captar y convertir.
-2. **Plataforma privada** para que clientes consulten la actividad de sus perros.
-3. **Backend/API** para autenticación, negocio y sincronización con la app móvil.
-4. **Base de datos** optimizada para usuarios, mascotas, dispositivos y métricas históricas.
+## Requisitos
 
-La recomendación para el MVP es una **arquitectura híbrida**:
+- Node.js 20+
+- pnpm 10+
+- PostgreSQL 15+
 
-- **WordPress solo para marketing**, si el hosting ya lo facilita y el equipo necesita editar contenido sin depender de desarrollo.
-- **Aplicación web privada y API custom** en un stack moderno separado.
-- **Base de datos central única** para la plataforma y la sincronización.
+## Variables de entorno
 
-Esto mantiene el sitio comercial simple de operar, pero evita forzar WordPress para lógica privada, dashboards y sincronización técnica.
+Copia el archivo de ejemplo:
 
+```bash
+cp .env.example .env
+```
 
-## Próximo paso recomendado
+Variables mínimas:
 
-Implementar primero la plataforma (`app` + `api`) y mantener WordPress desacoplado, conectado solo mediante enlaces y formularios de captación.
+- `DATABASE_URL`
+- `API_PORT`
+- `API_CORS_ORIGIN`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `JWT_ACCESS_EXPIRES_IN`
+- `JWT_REFRESH_EXPIRES_IN`
+- `NEXT_PUBLIC_API_URL`
+
+## Instalación
+
+```bash
+pnpm install
+```
+
+## Base de datos
+
+Puedes levantar PostgreSQL localmente con Docker:
+
+```bash
+docker compose -f infra/local/docker-compose.yml up -d
+```
+
+Luego:
+
+1. Configura `DATABASE_URL` en `.env`.
+2. Ejecuta:
+
+```bash
+pnpm db:generate
+pnpm db:push
+```
+
+## Desarrollo local
+
+### API
+
+```bash
+pnpm dev:api
+```
+
+API disponible en:
+
+- `http://localhost:4000/v1`
+
+### Web
+
+```bash
+pnpm dev:web
+```
+
+Web disponible en:
+
+- `http://localhost:3000`
+
+### Ambos en paralelo
+
+```bash
+pnpm dev
+```
+
+## Endpoints implementados en esta fase
+
+- `POST /v1/auth/register`
+- `POST /v1/auth/login`
+- `POST /v1/auth/refresh`
+- `POST /v1/auth/logout`
+- `GET /v1/auth/me`
+
+## Frontend implementado en esta fase
+
+- `/login`
+- `/register`
+- `/dashboard`
+- protección básica de rutas privadas con middleware
+- sesión inicial mediante cookies httpOnly desde route handlers de Next.js
+
+## Qué falta para la siguiente fase
+
+- CRUD real de mascotas
+- base funcional de dispositivos
+- formularios protegidos con sesión validada contra `GET /auth/me`
+- logout desde frontend
+- dashboard con datos reales
+- refresh automático de sesión en frontend
