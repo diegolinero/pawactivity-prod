@@ -211,3 +211,7 @@ La asignación de dispositivo se hace desde la pantalla de detalle de la mascota
 ## Documentación de producción
 
 - `docs/production-release.md`
+
+## Documentación de piloto
+
+- `docs/pilot-runbook.md`

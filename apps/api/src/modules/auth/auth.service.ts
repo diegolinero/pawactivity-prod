@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
@@ -14,12 +15,14 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async register(input: RegisterDto, meta: RequestMeta) {
     this.assertRegistrationAllowed(input.email);
     const existingUser = await this.prisma.user.findUnique({ where: { email: input.email } });
     if (existingUser) {
+      this.metricsService.increment('auth_register_conflict_total');
       throw new BadRequestException('Email already in use');
     }
 
@@ -35,6 +38,7 @@ export class AuthService {
     });
 
     const session = await this.createSession(user.id, user.email, meta, true);
+    this.metricsService.increment('auth_register_success_total');
     this.logger.log(JSON.stringify({ event: 'auth_register_success', userId: user.id, email: user.email }));
     return session;
   }
@@ -42,12 +46,14 @@ export class AuthService {
   async login(input: LoginDto, meta: RequestMeta) {
     const user = await this.prisma.user.findUnique({ where: { email: input.email } });
     if (!user) {
+      this.metricsService.increment('auth_login_failed_total');
       this.logger.warn(JSON.stringify({ event: 'auth_login_failed', email: input.email, reason: 'user_not_found' }));
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const validPassword = await argon2.verify(user.passwordHash, input.password);
     if (!validPassword) {
+      this.metricsService.increment('auth_login_failed_total');
       this.logger.warn(JSON.stringify({ event: 'auth_login_failed', email: input.email, reason: 'invalid_password', userId: user.id }));
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -58,6 +64,7 @@ export class AuthService {
     });
 
     const session = await this.createSession(user.id, user.email, meta);
+    this.metricsService.increment('auth_login_success_total');
     this.logger.log(JSON.stringify({ event: 'auth_login_success', userId: user.id, email: user.email }));
     return session;
   }
@@ -67,12 +74,14 @@ export class AuthService {
     const session = await this.prisma.authSession.findUnique({ where: { id: payload.sessionId } });
 
     if (!session || session.revokedAt || session.expiresAt < new Date()) {
+      this.metricsService.increment('auth_refresh_failed_total');
       this.logger.warn(JSON.stringify({ event: 'auth_refresh_failed', sessionId: payload.sessionId, reason: 'session_invalid' }));
       throw new UnauthorizedException('Session is not valid');
     }
 
     const validToken = await argon2.verify(session.refreshTokenHash, refreshToken);
     if (!validToken) {
+      this.metricsService.increment('auth_refresh_failed_total');
       this.logger.warn(JSON.stringify({ event: 'auth_refresh_failed', sessionId: payload.sessionId, reason: 'token_hash_mismatch' }));
       throw new UnauthorizedException('Session is not valid');
     }
@@ -83,6 +92,7 @@ export class AuthService {
     });
 
     const nextSession = await this.createSession(session.userId, payload.email, meta);
+    this.metricsService.increment('auth_refresh_success_total');
     this.logger.log(JSON.stringify({ event: 'auth_refresh_success', userId: session.userId, previousSessionId: session.id, nextSessionId: nextSession.session.sessionId }));
     return nextSession;
   }
@@ -95,6 +105,7 @@ export class AuthService {
     });
 
     this.logger.log(JSON.stringify({ event: 'auth_logout', userId: payload.sub, sessionId: payload.sessionId }));
+    this.metricsService.increment('auth_logout_total');
     return { success: true };
   }
 
@@ -204,6 +215,7 @@ export class AuthService {
       .filter(Boolean);
 
     if (!allowlist.includes(email.toLowerCase())) {
+      this.metricsService.increment('auth_register_blocked_total');
       throw new ForbiddenException('Registration is currently limited');
     }
   }

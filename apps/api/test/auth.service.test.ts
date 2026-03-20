@@ -52,8 +52,14 @@ function createAuthService(options?: { allowPublicRegistration?: string; registr
       REGISTRATION_EMAIL_ALLOWLIST: options?.registrationAllowlist ?? '',
     } as Record<string, string>)[key],
   } as any;
+  const metrics = {
+    increment: () => undefined,
+    trackSync: () => undefined,
+    trackApiRequest: () => undefined,
+    snapshot: () => ({}),
+  } as any;
 
-  const service = new AuthService(prisma, jwt, config);
+  const service = new AuthService(prisma, jwt, config, metrics);
   return { service, sessions, users };
 }
 

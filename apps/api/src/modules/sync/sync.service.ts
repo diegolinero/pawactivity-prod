@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { ActivityType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MetricsService } from '../metrics/metrics.service';
 import { PetsService } from '../pets/pets.service';
 import { DevicesService } from '../devices/devices.service';
 import { SyncActivityDto } from './dto/sync-activity.dto';
@@ -13,6 +14,7 @@ export class SyncService {
     private readonly prisma: PrismaService,
     private readonly petsService: PetsService,
     private readonly devicesService: DevicesService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async syncActivity(userId: string, dto: SyncActivityDto) {
@@ -25,6 +27,7 @@ export class SyncService {
       generatedAt: dto.generatedAt,
       timezone: dto.timezone,
     }));
+    this.metricsService.increment('activity_sync_received_total');
 
     await this.petsService.ensureOwnership(userId, dto.petId);
     await this.devicesService.getById(userId, dto.deviceId);
@@ -38,11 +41,15 @@ export class SyncService {
     });
 
     if (!activeAssignment) {
+      this.metricsService.increment('activity_sync_error_total');
+      this.logger.warn(JSON.stringify({ event: 'activity_sync_rejected', userId, petId: dto.petId, deviceId: dto.deviceId, reason: 'device_not_assigned' }));
       throw new ForbiddenException('Device is not actively assigned to this pet');
     }
 
     const generatedAt = new Date(dto.generatedAt);
     if (Number.isNaN(generatedAt.getTime())) {
+      this.metricsService.increment('activity_sync_error_total');
+      this.logger.warn(JSON.stringify({ event: 'activity_sync_rejected', userId, petId: dto.petId, deviceId: dto.deviceId, reason: 'invalid_generated_at' }));
       throw new BadRequestException('Invalid generatedAt');
     }
 
@@ -144,6 +151,18 @@ export class SyncService {
       skippedDuplicates: response.skippedDuplicates,
       updatedDates: response.updatedDates,
     }));
+    this.metricsService.increment('activity_sync_success_total');
+    this.metricsService.trackSync(userId, response.recordsReceived, response.skippedDuplicates);
+
+    if (response.skippedDuplicates > 0) {
+      this.logger.warn(JSON.stringify({
+        event: 'activity_sync_duplicates_detected',
+        userId,
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        skippedDuplicates: response.skippedDuplicates,
+      }));
+    }
 
     return response;
   }

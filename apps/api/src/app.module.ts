@@ -7,11 +7,13 @@ import { DevicesModule } from './modules/devices/devices.module';
 import { ActivityModule } from './modules/activity/activity.module';
 import { SyncModule } from './modules/sync/sync.module';
 import { HealthModule } from './modules/health/health.module';
+import { MetricsModule } from './modules/metrics/metrics.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../../.env'] }),
+    MetricsModule,
     PrismaModule,
     AuthModule,
     UsersModule,
