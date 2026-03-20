@@ -6,7 +6,7 @@ import { AppShell } from '@/components/layout/app-shell';
 import { PetProfileHeader } from '@/components/pets/pet-profile-header';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { apiFetchWithSession } from '@/lib/server-api';
+import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -15,13 +15,15 @@ export default async function PetDetailPage({ params }: { params: Promise<{ petI
   if (!token) redirect('/login');
 
   const { petId } = await params;
-  const [pet, devices, weeklySummary] = await Promise.all([
+  const [pet, devices, weeklySummary] = await withSessionRedirect(() => Promise.all([
     apiFetchWithSession<PetSummary>(`/pets/${petId}`),
     apiFetchWithSession<DeviceSummary[]>('/devices'),
     apiFetchWithSession<WeeklyActivityResponse>(`/pets/${petId}/activity/weekly?startDate=${new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)}`),
-  ]);
+  ]));
 
-  const deviceStatus = pet.activeDevice ? await apiFetchWithSession<DeviceSummary>(`/devices/${pet.activeDevice.id}/status`) : null;
+  const deviceStatus = pet.activeDevice
+    ? await withSessionRedirect(() => apiFetchWithSession<DeviceSummary>(`/devices/${pet.activeDevice.id}/status`))
+    : null;
   const availableDevices = devices.filter((device) => !device.assignedPet || device.assignedPet.id === pet.id);
   const weeklyTotals = weeklySummary.days.reduce(
     (acc, day) => {

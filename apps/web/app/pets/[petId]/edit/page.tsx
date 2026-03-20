@@ -2,7 +2,7 @@ import type { PetSummary } from '@pawactivity/types';
 import { AppShell } from '@/components/layout/app-shell';
 import { PetForm } from '@/components/pets/pet-form';
 import { Card } from '@/components/ui/card';
-import { apiFetchWithSession } from '@/lib/server-api';
+import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -11,7 +11,7 @@ export default async function EditPetPage({ params }: { params: Promise<{ petId:
   if (!token) redirect('/login');
 
   const { petId } = await params;
-  const pet = await apiFetchWithSession<PetSummary>(`/pets/${petId}`);
+  const pet = await withSessionRedirect(() => apiFetchWithSession<PetSummary>(`/pets/${petId}`));
 
   return (
     <AppShell>

@@ -4,7 +4,7 @@ import { HistoryRangeSelector } from '@/components/history/history-range-selecto
 import { PetSelector } from '@/components/dashboard/pet-selector';
 import { AppShell } from '@/components/layout/app-shell';
 import { EmptyState } from '@/components/shared/empty-state';
-import { apiFetchWithSession } from '@/lib/server-api';
+import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -12,10 +12,10 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   const token = await getAccessToken();
   if (!token) redirect('/login');
 
-  const [pets, params] = await Promise.all([
+  const [pets, params] = await withSessionRedirect(() => Promise.all([
     apiFetchWithSession<PetSummary[]>('/pets'),
     searchParams,
-  ]);
+  ]));
 
   if (pets.length === 0) {
     return (
@@ -32,7 +32,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
 
   const range = params.range ?? 'week';
   const petId = params.petId && pets.some((pet) => pet.id === params.petId) ? params.petId : pets[0].id;
-  const history = await apiFetchWithSession<DailyActivitySummary[]>(`/pets/${petId}/activity/history?range=${range}`);
+  const history = await withSessionRedirect(() => apiFetchWithSession<DailyActivitySummary[]>(`/pets/${petId}/activity/history?range=${range}`));
 
   return (
     <AppShell>

@@ -4,14 +4,17 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { deviceAssignmentSchema, type DeviceAssignmentInput } from '@pawactivity/validation';
 import type { DeviceSummary } from '@pawactivity/types';
 import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 export function DeviceAssignmentForm({ petId, devices }: { petId: string; devices: DeviceSummary[] }) {
+  const [formError, setFormError] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DeviceAssignmentInput>({
     resolver: zodResolver(deviceAssignmentSchema),
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    setFormError(null);
     const response = await fetch(`/pets/${petId}/assign-device`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -20,7 +23,7 @@ export function DeviceAssignmentForm({ petId, devices }: { petId: string; device
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      alert(payload?.message ?? 'No se pudo asignar el dispositivo');
+      setFormError(payload?.message ?? 'No se pudo asignar el dispositivo');
       return;
     }
 
@@ -41,6 +44,7 @@ export function DeviceAssignmentForm({ petId, devices }: { petId: string; device
         </select>
         {errors.deviceId ? <p className="mt-1 text-sm text-red-600">{errors.deviceId.message}</p> : null}
       </div>
+      {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
       <Button className="w-full" disabled={isSubmitting || devices.length === 0}>
         {isSubmitting ? 'Asignando...' : 'Asignar dispositivo'}
       </Button>

@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { petSchema, type PetInput } from '@pawactivity/validation';
 import { useForm } from 'react-hook-form';
 import type { ReactNode } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 type PetFormProps = {
@@ -13,6 +14,7 @@ type PetFormProps = {
 };
 
 export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
+  const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
@@ -30,6 +32,7 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    setFormError(null);
     const payload = {
       ...values,
       breed: values.breed || undefined,
@@ -45,13 +48,13 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
     });
 
     if (!response.ok) {
-      const payload = await response.json().catch(() => null);
-      alert(payload?.message ?? 'No se pudo guardar la mascota');
+      const errorPayload = await response.json().catch(() => null);
+      setFormError(errorPayload?.message ?? 'No se pudo guardar la mascota');
       return;
     }
 
-    const payload = await response.json();
-    window.location.href = payload.redirectTo;
+    const successPayload = await response.json();
+    window.location.href = successPayload.redirectTo;
   });
 
   return (
@@ -80,6 +83,7 @@ export function PetForm({ action, submitLabel, defaultValues }: PetFormProps) {
       <Field label="Foto (URL)" error={errors.photoUrl?.message}>
         <input className="input" {...register('photoUrl')} />
       </Field>
+      {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
       <Button className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Guardando...' : submitLabel}
       </Button>

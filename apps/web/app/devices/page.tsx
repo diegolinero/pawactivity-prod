@@ -2,7 +2,7 @@ import type { DeviceSummary } from '@pawactivity/types';
 import { AppShell } from '@/components/layout/app-shell';
 import { DeviceActivationForm } from '@/components/devices/device-activation-form';
 import { Card } from '@/components/ui/card';
-import { apiFetchWithSession } from '@/lib/server-api';
+import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -10,7 +10,7 @@ export default async function DevicesPage() {
   const token = await getAccessToken();
   if (!token) redirect('/login');
 
-  const devices = await apiFetchWithSession<DeviceSummary[]>('/devices');
+  const devices = await withSessionRedirect(() => apiFetchWithSession<DeviceSummary[]>('/devices'));
 
   return (
     <AppShell>

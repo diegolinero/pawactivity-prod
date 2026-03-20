@@ -157,6 +157,7 @@ model ActivityEvent {
 
   @@index([petId, startedAt(sort: Desc)])
   @@index([deviceId, startedAt(sort: Desc)])
+  @@unique([petId, deviceId, activityType, startedAt, endedAt])
   @@map("activity_events")
 }
 

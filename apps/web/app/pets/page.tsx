@@ -3,7 +3,7 @@ import type { PetSummary } from '@pawactivity/types';
 import { AppShell } from '@/components/layout/app-shell';
 import { PetCard } from '@/components/pets/pet-card';
 import { Button } from '@/components/ui/button';
-import { apiFetchWithSession } from '@/lib/server-api';
+import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -11,7 +11,7 @@ export default async function PetsPage() {
   const token = await getAccessToken();
   if (!token) redirect('/login');
 
-  const pets = await apiFetchWithSession<PetSummary[]>('/pets');
+  const pets = await withSessionRedirect(() => apiFetchWithSession<PetSummary[]>('/pets'));
 
   return (
     <AppShell>

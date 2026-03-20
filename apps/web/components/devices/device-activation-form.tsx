@@ -3,14 +3,17 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { deviceActivationSchema, type DeviceActivationInput } from '@pawactivity/validation';
 import { useForm } from 'react-hook-form';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 export function DeviceActivationForm() {
+  const [formError, setFormError] = useState<string | null>(null);
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<DeviceActivationInput>({
     resolver: zodResolver(deviceActivationSchema),
   });
 
   const onSubmit = handleSubmit(async (values) => {
+    setFormError(null);
     const response = await fetch('/devices/actions/activate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -19,7 +22,7 @@ export function DeviceActivationForm() {
 
     if (!response.ok) {
       const payload = await response.json().catch(() => null);
-      alert(payload?.message ?? 'No se pudo activar el dispositivo');
+      setFormError(payload?.message ?? 'No se pudo activar el dispositivo');
       return;
     }
 
@@ -33,6 +36,7 @@ export function DeviceActivationForm() {
         <input className="input" {...register('serialNumber')} />
         {errors.serialNumber && <p className="mt-1 text-sm text-red-600">{errors.serialNumber.message}</p>}
       </div>
+      {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
       <Button className="w-full" disabled={isSubmitting}>
         {isSubmitting ? 'Activando...' : 'Activar dispositivo'}
       </Button>

@@ -157,6 +157,36 @@ pnpm dev
 7. La app móvil ya puede enviar lotes de actividad al backend para almacenarlos y resumirlos por día.
 8. El dashboard y el historial consumen esos datos para mostrar actividad diaria, semanal y timeline.
 
+## Endurecimientos incluidos en esta iteración
+
+- La API ahora normaliza los errores HTTP para responder con un objeto JSON consistente con `statusCode` y `message`.
+- Las consultas de actividad validan explícitamente `range`, `timezone` y `generatedAt` antes de procesar datos.
+- La sincronización de actividad evita duplicados exactos por evento y recalcula el resumen diario a partir de los eventos persistidos.
+- La web convierte errores `401/403` en redirección a `/login` en las páginas privadas más importantes.
+- Los formularios principales de mascotas y dispositivos muestran errores inline en vez de depender de `alert()`.
+- Se agregó una ruta `POST /logout` en la app web para cerrar sesión local incluso si el backend falla durante el logout remoto.
+
+## Checks manuales sugeridos
+
+1. Registrar un usuario, iniciar sesión y confirmar acceso a `/dashboard`.
+2. Crear una mascota, editarla y verificar que los errores de validación o backend se muestren dentro del formulario.
+3. Activar un dispositivo por serial y revisar que el mensaje de error aparezca inline si la activación falla.
+4. Asignar un dispositivo a una mascota y confirmar que la asignación siga visible al volver al detalle.
+5. Enviar dos veces el mismo lote a `POST /v1/activity/sync` y verificar que la segunda respuesta reporte duplicados omitidos.
+6. Abrir `/dashboard`, `/pets`, `/devices`, `/history` y el detalle de una mascota con una sesión inválida/expirada para confirmar la redirección a `/login`.
+
+## Tests automatizados disponibles
+
+```bash
+pnpm --filter api test
+```
+
+Actualmente cubren:
+
+- flujo básico de registro/login/me/logout en `AuthService`
+- sincronización válida de actividad con reporte de duplicados
+- rechazo de duraciones inválidas en la sincronización
+
 ## Decisión UX de esta fase
 
 La asignación de dispositivo se hace desde la pantalla de detalle de la mascota en lugar de centralizarla en `/devices`, porque para este MVP resulta más claro decidir **qué dispositivo queda asociado a qué perro** desde el contexto de la mascota.

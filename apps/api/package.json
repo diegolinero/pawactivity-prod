@@ -8,7 +8,8 @@
     "start": "node dist/main.js",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --check \"src/**/*.ts\""
+    "format": "prettier --check \"src/**/*.ts\"",
+    "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",

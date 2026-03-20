@@ -87,6 +87,7 @@ export class ActivityService {
 
   async getHistory(userId: string, petId: string, range: 'today' | 'week' | 'month' = 'week') {
     await this.petsService.ensureOwnership(userId, petId);
+    this.assertValidRange(range);
 
     let start = new Date();
     if (range === 'today') {
@@ -110,6 +111,7 @@ export class ActivityService {
 
   async getTimeline(userId: string, petId: string, date?: string, timezone = 'UTC') {
     await this.petsService.ensureOwnership(userId, petId);
+    this.assertValidTimezone(timezone);
     const targetDate = this.toDateKey(this.normalizeDate(date));
     const utcStart = new Date(`${targetDate}T00:00:00.000Z`);
     const utcEnd = new Date(`${targetDate}T23:59:59.999Z`);
@@ -191,16 +193,26 @@ export class ActivityService {
     return date.toISOString().slice(0, 10);
   }
 
-  private toTimezoneDateKey(date: Date, timezone: string) {
+  private assertValidRange(range: string) {
+    if (!['today', 'week', 'month'].includes(range)) {
+      throw new BadRequestException('Invalid history range');
+    }
+  }
+
+  private assertValidTimezone(timezone: string) {
     try {
-      return new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(date);
+      new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
     } catch {
       throw new BadRequestException('Invalid timezone');
     }
+  }
+
+  private toTimezoneDateKey(date: Date, timezone: string) {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(date);
   }
 }

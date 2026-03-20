@@ -8,7 +8,7 @@ import { SummaryStatCard } from '@/components/dashboard/summary-stat-card';
 import { WeeklyActivityBarChart } from '@/components/dashboard/weekly-activity-bar-chart';
 import { AppShell } from '@/components/layout/app-shell';
 import { EmptyState } from '@/components/shared/empty-state';
-import { apiFetchWithSession } from '@/lib/server-api';
+import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -16,11 +16,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const token = await getAccessToken();
   if (!token) redirect('/login');
 
-  const [user, pets, params] = await Promise.all([
+  const [user, pets, params] = await withSessionRedirect(() => Promise.all([
     apiFetchWithSession<AuthUser>('/auth/me'),
     apiFetchWithSession<PetSummary[]>('/pets'),
     searchParams,
-  ]);
+  ]));
 
   if (pets.length === 0) {
     return (
@@ -41,13 +41,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const weekStart = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
 
-  const [daily, previousDaily, weekly, timeline, deviceStatus] = await Promise.all([
+  const [daily, previousDaily, weekly, timeline, deviceStatus] = await withSessionRedirect(() => Promise.all([
     apiFetchWithSession<DailyActivitySummary>(`/pets/${pet.id}/activity/daily?date=${today}`),
     apiFetchWithSession<DailyActivitySummary>(`/pets/${pet.id}/activity/daily?date=${yesterday}`),
     apiFetchWithSession<WeeklyActivityResponse>(`/pets/${pet.id}/activity/weekly?startDate=${weekStart}`),
     apiFetchWithSession<ActivityTimelineItem[]>(`/pets/${pet.id}/activity/timeline?date=${today}&timezone=${encodeURIComponent(user.timezone)}`),
     pet.activeDevice ? apiFetchWithSession<DeviceSummary>(`/devices/${pet.activeDevice.id}`) : Promise.resolve(null),
-  ]);
+  ]));
 
   const hasData = daily.hasData || weekly.days.some((day) => day.hasData) || timeline.length > 0;
 
