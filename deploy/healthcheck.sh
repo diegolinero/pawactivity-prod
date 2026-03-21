@@ -3,18 +3,22 @@ set -Eeuo pipefail
 
 echo "=== Healthcheck PawActivity ==="
 
+echo "→ PM2"
 pm2 list
 
-echo "→ Checking API"
-curl -f http://localhost:4000/v1 || exit 1
+echo "→ API"
+curl -fsS http://localhost:4000/v1 >/dev/null
 
-echo "→ Checking WEB"
-curl -f http://localhost:3000 || exit 1
+echo "→ WEB"
+curl -fsS http://localhost:3000 >/dev/null
+
+echo "→ Ports"
+ss -tulpn | grep -E ':3000|:4000' >/dev/null
 
 echo "→ Memory"
 free -h
 
-echo "→ Ports"
-ss -tulpn | grep -E '4000|3000|80|443'
+echo "→ Disk"
+df -h /
 
-echo "=== OK ==="
+echo "=== Healthcheck OK ==="
