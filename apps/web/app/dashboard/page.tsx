@@ -9,6 +9,7 @@ import { WeeklyActivityBarChart } from '@/components/dashboard/weekly-activity-b
 import { AppShell } from '@/components/layout/app-shell';
 import { EmptyState } from '@/components/shared/empty-state';
 import { apiFetchWithSession, withSessionRedirect } from '@/lib/server-api';
+import { formatDurationFromSeconds } from '@/lib/format-duration';
 import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
@@ -118,10 +119,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <SummaryStatCard title="Reposo hoy" value={`${Math.round(daily.restSeconds / 60)} min`} accent="#60A5FA" />
-              <SummaryStatCard title="Caminar hoy" value={`${Math.round(daily.walkSeconds / 60)} min`} accent="#22C55E" />
-              <SummaryStatCard title="Correr hoy" value={`${Math.round(daily.runSeconds / 60)} min`} accent="#F97316" />
-              <SummaryStatCard title="Total activo hoy" value={`${Math.round(daily.totalActiveSeconds / 60)} min`} accent="#0F766E" />
+              <SummaryStatCard title="Reposo hoy" value={formatDurationFromSeconds(daily.restSeconds)} accent="#60A5FA" />
+              <SummaryStatCard title="Caminar hoy" value={formatDurationFromSeconds(daily.walkSeconds)} accent="#22C55E" />
+              <SummaryStatCard title="Correr hoy" value={formatDurationFromSeconds(daily.runSeconds)} accent="#F97316" />
+              <SummaryStatCard title="Total activo hoy" value={formatDurationFromSeconds(daily.totalActiveSeconds)} accent="#0F766E" />
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
