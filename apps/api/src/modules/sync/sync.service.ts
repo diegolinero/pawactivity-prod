@@ -59,8 +59,6 @@ export class SyncService {
     const events = dto.events.map((event) => this.normalizeEvent(event));
     this.validateEvents(events);
 
-    const affectedDates = [...new Set(events.map((event) => this.toTimezoneDateKey(event.startedAt, dto.timezone)))];
-
     const result = await this.prisma.$transaction(async (tx) => {
       const createResult = await tx.activityEvent.createMany({
         data: events.map((event) => ({
@@ -75,35 +73,6 @@ export class SyncService {
         })),
         skipDuplicates: true,
       });
-
-      for (const dateKey of affectedDates) {
-        const totals = await this.recalculateSummaryForDate(tx, dto.petId, dto.timezone, dateKey);
-
-        await tx.activityDailySummary.upsert({
-          where: {
-            petId_summaryDate: {
-              petId: dto.petId,
-              summaryDate: new Date(`${dateKey}T00:00:00.000Z`),
-            },
-          },
-          update: {
-            timezone: dto.timezone,
-            restSeconds: totals.restSeconds,
-            walkSeconds: totals.walkSeconds,
-            runSeconds: totals.runSeconds,
-            totalActiveSeconds: totals.totalActiveSeconds,
-          },
-          create: {
-            petId: dto.petId,
-            summaryDate: new Date(`${dateKey}T00:00:00.000Z`),
-            timezone: dto.timezone,
-            restSeconds: totals.restSeconds,
-            walkSeconds: totals.walkSeconds,
-            runSeconds: totals.runSeconds,
-            totalActiveSeconds: totals.totalActiveSeconds,
-          },
-        });
-      }
 
       await tx.device.update({
         where: { id: dto.deviceId },
@@ -138,8 +107,17 @@ export class SyncService {
       storedEvents: result.storedEvents,
       skippedDuplicates: events.length - result.storedEvents,
       syncedAt: result.log.syncedAt.toISOString(),
-      updatedDates: affectedDates,
     };
+
+    this.logger.log(JSON.stringify({
+      event: 'daily_summary_upsert_skipped_for_event_sync',
+      userId,
+      petId: dto.petId,
+      deviceId: dto.deviceId,
+      recordsReceived: events.length,
+      storedEvents: response.storedEvents,
+      reason: 'activity_daily_summary_governed_by_snapshot_sync',
+    }));
 
     this.logger.log(JSON.stringify({
       event: 'activity_sync_success',
@@ -150,7 +128,6 @@ export class SyncService {
       recordsReceived: response.recordsReceived,
       storedEvents: response.storedEvents,
       skippedDuplicates: response.skippedDuplicates,
-      updatedDates: response.updatedDates,
     }));
     this.metricsService.increment('activity_sync_success_total');
     this.metricsService.trackSync(userId, response.recordsReceived, response.skippedDuplicates);
@@ -282,6 +259,15 @@ export class SyncService {
         },
       });
 
+      this.logger.log(JSON.stringify({
+        event: 'daily_summary_upsert_from_snapshot',
+        userId,
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        summaryDate: dto.summaryDate,
+        timezone: dto.timezone,
+      }));
+
       await tx.device.update({
         where: { id: dto.deviceId },
         data: {
@@ -376,41 +362,6 @@ export class SyncService {
     }
   }
 
-  private async recalculateSummaryForDate(tx: any, petId: string, timezone: string, dateKey: string) {
-    const utcStart = new Date(`${dateKey}T00:00:00.000Z`);
-    const utcEnd = new Date(`${dateKey}T23:59:59.999Z`);
-    utcStart.setUTCDate(utcStart.getUTCDate() - 1);
-    utcEnd.setUTCDate(utcEnd.getUTCDate() + 1);
-
-    const events = await tx.activityEvent.findMany({
-      where: {
-        petId,
-        startedAt: {
-          gte: utcStart,
-          lte: utcEnd,
-        },
-      },
-    });
-
-    return events
-      .filter((event: { startedAt: Date }) => this.toTimezoneDateKey(event.startedAt, timezone) === dateKey)
-      .reduce(
-        (acc: { restSeconds: number; walkSeconds: number; runSeconds: number; totalActiveSeconds: number }, event: { activityType: ActivityType; durationSeconds: number }) => {
-          if (event.activityType === 'rest') acc.restSeconds += event.durationSeconds;
-          if (event.activityType === 'walk') {
-            acc.walkSeconds += event.durationSeconds;
-            acc.totalActiveSeconds += event.durationSeconds;
-          }
-          if (event.activityType === 'run') {
-            acc.runSeconds += event.durationSeconds;
-            acc.totalActiveSeconds += event.durationSeconds;
-          }
-          return acc;
-        },
-        { restSeconds: 0, walkSeconds: 0, runSeconds: 0, totalActiveSeconds: 0 },
-      );
-  }
-
   private assertValidTimezone(timezone: string) {
     try {
       new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
@@ -419,12 +370,4 @@ export class SyncService {
     }
   }
 
-  private toTimezoneDateKey(date: Date, timezone: string) {
-    return new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(date);
-  }
 }
