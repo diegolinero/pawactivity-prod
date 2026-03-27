@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { LogoutButton } from './logout-button';
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -16,11 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link href="/devices">Dispositivos</Link>
               <Link href="/history">Historial</Link>
             </nav>
-            <form action="/logout" method="post">
-              <button className="rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 transition hover:bg-slate-100" type="submit">
-                Cerrar sesión
-              </button>
-            </form>
+            <LogoutButton />
           </div>
         </div>
       </header>
