@@ -1,5 +1,5 @@
 import { ApiError, apiFetch } from './api';
-import { getAccessToken } from './session';
+import { clearSessionCookies, getAccessToken } from './session';
 
 export async function apiFetchWithSession<T>(path: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken();
@@ -19,6 +19,7 @@ export async function withSessionRedirect<T>(action: () => Promise<T>): Promise<
     return await action();
   } catch (error) {
     if (isUnauthorizedError(error)) {
+      await clearSessionCookies();
       const { redirect } = await import('next/navigation');
       redirect('/login');
     }
