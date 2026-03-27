@@ -8,8 +8,6 @@ import { ActivityService } from './activity.service';
 export class ActivityController {
   constructor(private readonly activityService: ActivityService) {}
 
-  // NOTE: timezone is optional in all endpoints and defaults are resolved in service.
-
   @Get('daily')
   daily(
     @CurrentUser() user: { id: string },
