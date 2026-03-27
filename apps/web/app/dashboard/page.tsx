@@ -13,12 +13,13 @@ import { getAccessToken } from '@/lib/session';
 import { redirect } from 'next/navigation';
 
 function toTimezoneDateKey(date: Date, timezone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(date);
+  });
+  const parts = formatter.formatToParts(date);
 
   const year = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;

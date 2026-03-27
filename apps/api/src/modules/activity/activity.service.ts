@@ -39,8 +39,8 @@ export class ActivityService {
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const todayDateKey = this.getTodayDateKey(resolvedTimezone);
     const startDateKey = startDate ? this.normalizeDateKey(startDate) : this.shiftDateKey(todayDateKey, -6);
-    const queryEndDateKey = this.shiftDateKey(startDateKey, 6);
-    const queryStartDate = this.dateKeyToUtcMidnight(startDateKey);
+    const [queryStartDateKey, queryEndDateKey] = this.getDateKeyRange(startDateKey, 7);
+    const queryStartDate = this.dateKeyToUtcMidnight(queryStartDateKey);
     const queryEndDate = this.dateKeyToUtcMidnight(queryEndDateKey);
 
     this.logger.log(`method=getWeekly petId=${petId} timezone=${resolvedTimezone} localDateKey=${todayDateKey} summary_start_date=${startDateKey} summary_end_date=${queryEndDateKey}`);
@@ -63,7 +63,7 @@ export class ActivityService {
     });
 
     return {
-      startDate: startDateKey,
+      startDate: queryStartDateKey,
       endDate: queryEndDateKey,
       days,
     };
@@ -74,8 +74,7 @@ export class ActivityService {
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetMonth = this.normalizeMonth(month, resolvedTimezone);
     const monthReferenceDateKey = `${targetMonth}-01`;
-    const startDateKey = this.getMonthStartDateKey(monthReferenceDateKey);
-    const endDateKey = this.getMonthEndDateKey(monthReferenceDateKey);
+    const [startDateKey, endDateKey] = this.getMonthRangeDateKeys(monthReferenceDateKey);
     const localDateKey = this.getTodayDateKey(resolvedTimezone);
 
     this.logger.log(`method=getMonthly petId=${petId} timezone=${resolvedTimezone} localDateKey=${localDateKey} month=${targetMonth} summary_start_date=${startDateKey} summary_end_date=${endDateKey}`);
@@ -141,8 +140,8 @@ export class ActivityService {
     await this.petsService.ensureOwnership(userId, petId);
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetDate = this.resolveTargetDateKey(date, resolvedTimezone);
-    const utcStart = new Date(`${this.shiftDateKey(targetDate, -1)}T00:00:00.000Z`);
-    const utcEnd = new Date(`${this.shiftDateKey(targetDate, 1)}T23:59:59.999Z`);
+    const utcStart = this.dateKeyToUtcMidnight(this.shiftDateKey(targetDate, -1));
+    const utcEnd = new Date(this.dateKeyToUtcMidnight(this.shiftDateKey(targetDate, 2)).getTime() - 1);
 
     this.logger.log(`method=getTimeline petId=${petId} timezone=${resolvedTimezone} localDateKey=${targetDate} queryWindowStart=${utcStart.toISOString()} queryWindowEnd=${utcEnd.toISOString()}`);
 
@@ -246,10 +245,19 @@ export class ActivityService {
     return `${dateKey.slice(0, 7)}-01`;
   }
 
+  private getDateKeyRange(startDateKey: string, days: number): [string, string] {
+    return [startDateKey, this.shiftDateKey(startDateKey, days - 1)];
+  }
+
+  private getMonthRangeDateKeys(dateKey: string): [string, string] {
+    const startDateKey = this.getMonthStartDateKey(dateKey);
+    const nextMonthDateKey = this.shiftDateKey(startDateKey, 32);
+    const endDateKey = this.shiftDateKey(this.getMonthStartDateKey(nextMonthDateKey), -1);
+    return [startDateKey, endDateKey];
+  }
+
   private getMonthEndDateKey(dateKey: string) {
-    const monthStartDateKey = this.getMonthStartDateKey(dateKey);
-    const nextMonthDateKey = this.shiftDateKey(monthStartDateKey, 32);
-    return this.shiftDateKey(this.getMonthStartDateKey(nextMonthDateKey), -1);
+    return this.getMonthRangeDateKeys(dateKey)[1];
   }
 
   private assertValidRange(range: string) {
