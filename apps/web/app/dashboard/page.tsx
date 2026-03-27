@@ -32,9 +32,12 @@ function toTimezoneDateKey(date: Date, timezone: string) {
 }
 
 function shiftDateKey(dateKey: string, days: number) {
-  const date = new Date(`${dateKey}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+  const date = new Date(`${dateKey}T12:00:00.000Z`);
+  const shifted = new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  const year = shifted.getUTCFullYear();
+  const month = String(shifted.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ petId?: string }> }) {

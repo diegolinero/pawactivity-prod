@@ -13,7 +13,7 @@ export class ActivityService {
 
   async getDaily(userId: string, petId: string, date?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
-    const resolvedTimezone = await this.resolveTimezone(petId, timezone);
+    const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetDateKey = date ? this.normalizeDateKey(date) : this.getCurrentDateKey(resolvedTimezone);
     const targetDate = this.toSummaryDate(targetDateKey);
 
@@ -35,7 +35,7 @@ export class ActivityService {
 
   async getWeekly(userId: string, petId: string, startDate?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
-    const resolvedTimezone = await this.resolveTimezone(petId, timezone);
+    const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const endDateKey = this.getCurrentDateKey(resolvedTimezone);
     const startDateKey = startDate ? this.normalizeDateKey(startDate) : this.shiftDateKey(endDateKey, -6);
     const queryStartDate = this.toSummaryDate(startDateKey);
@@ -71,7 +71,7 @@ export class ActivityService {
 
   async getMonthly(userId: string, petId: string, month?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
-    const resolvedTimezone = await this.resolveTimezone(petId, timezone);
+    const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetMonth = this.normalizeMonth(month, resolvedTimezone);
     const startDateKey = `${targetMonth}-01`;
     const [year, monthNumber] = targetMonth.split('-').map(Number);
@@ -79,8 +79,9 @@ export class ActivityService {
       throw new BadRequestException('Invalid month');
     }
 
-    const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
-    const endDateKey = `${targetMonth}-${String(lastDay).padStart(2, '0')}`;
+    const nextMonth =
+      monthNumber === 12 ? `${year + 1}-01` : `${year}-${String(monthNumber + 1).padStart(2, '0')}`;
+    const endDateKey = this.shiftDateKey(`${nextMonth}-01`, -1);
 
     this.logger.log(`monthly query petId=${petId} timezone=${resolvedTimezone} month=${targetMonth}`);
 
@@ -115,7 +116,7 @@ export class ActivityService {
     await this.petsService.ensureOwnership(userId, petId);
     this.assertValidRange(range);
 
-    const resolvedTimezone = await this.resolveTimezone(petId, timezone);
+    const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const todayDateKey = this.getCurrentDateKey(resolvedTimezone);
     let startDateKey = todayDateKey;
 
@@ -130,7 +131,10 @@ export class ActivityService {
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
         petId,
-        summaryDate: { gte: this.toSummaryDate(startDateKey) },
+        summaryDate: {
+          gte: this.toSummaryDate(startDateKey),
+          lte: this.toSummaryDate(todayDateKey),
+        },
       },
       orderBy: { summaryDate: 'desc' },
     });
@@ -140,12 +144,10 @@ export class ActivityService {
 
   async getTimeline(userId: string, petId: string, date?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
-    const resolvedTimezone = await this.resolveTimezone(petId, timezone);
+    const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetDate = date ? this.normalizeDateKey(date) : this.getCurrentDateKey(resolvedTimezone);
-    const utcStart = new Date(`${targetDate}T00:00:00.000Z`);
-    const utcEnd = new Date(`${targetDate}T23:59:59.999Z`);
-    utcStart.setUTCDate(utcStart.getUTCDate() - 1);
-    utcEnd.setUTCDate(utcEnd.getUTCDate() + 1);
+    const utcStart = new Date(`${this.shiftDateKey(targetDate, -1)}T00:00:00.000Z`);
+    const utcEnd = new Date(`${this.shiftDateKey(targetDate, 1)}T23:59:59.999Z`);
 
     this.logger.log(`timeline query petId=${petId} timezone=${resolvedTimezone} dateKey=${targetDate}`);
 
@@ -189,8 +191,11 @@ export class ActivityService {
       throw new BadRequestException('Invalid date');
     }
 
-    const normalized = new Date(`${input}T00:00:00.000Z`);
+    const normalized = this.parseDateKey(input);
     if (Number.isNaN(normalized.getTime())) {
+      throw new BadRequestException('Invalid date');
+    }
+    if (this.formatUtcDateKey(normalized) !== input) {
       throw new BadRequestException('Invalid date');
     }
 
@@ -214,9 +219,9 @@ export class ActivityService {
   }
 
   private shiftDateKey(dateKey: string, diffDays: number) {
-    const date = this.toSummaryDate(dateKey);
-    date.setUTCDate(date.getUTCDate() + diffDays);
-    return this.toDateKey(date);
+    const date = this.parseDateKey(dateKey);
+    const shifted = new Date(date.getTime() + diffDays * 24 * 60 * 60 * 1000);
+    return this.formatUtcDateKey(shifted);
   }
 
   private toSummaryDate(dateKey: string) {
@@ -224,11 +229,22 @@ export class ActivityService {
   }
 
   private toDateKey(date: Date) {
-    return date.toISOString().slice(0, 10);
+    return this.formatUtcDateKey(date);
   }
 
   private getCurrentDateKey(timezone: string) {
     return this.toTimezoneDateKey(new Date(), timezone);
+  }
+
+  private parseDateKey(dateKey: string) {
+    return new Date(`${dateKey}T12:00:00.000Z`);
+  }
+
+  private formatUtcDateKey(date: Date) {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private assertValidRange(range: string) {
@@ -264,10 +280,20 @@ export class ActivityService {
     return `${year}-${month}-${day}`;
   }
 
-  private async resolveTimezone(petId: string, requestedTimezone?: string) {
+  private async resolveTimezone(userId: string, petId: string, requestedTimezone?: string) {
     if (requestedTimezone) {
       this.assertValidTimezone(requestedTimezone);
       return requestedTimezone;
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true },
+    });
+
+    if (user?.timezone) {
+      this.assertValidTimezone(user.timezone);
+      return user.timezone;
     }
 
     const latestSummary = await this.prisma.activityDailySummary.findFirst({
