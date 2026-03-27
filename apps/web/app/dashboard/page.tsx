@@ -76,7 +76,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const pet = pets.find((item) => item.id === selectedPetId) ?? firstPet;
 
-  const timezone = user.timezone || 'UTC';
+  const timezone = user.timezone ?? 'UTC';
   const today = toTimezoneDateKey(new Date(), timezone);
   const yesterday = shiftDateKey(today, -1);
   const weekStart = shiftDateKey(today, -6);
