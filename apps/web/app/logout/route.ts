@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { apiFetch } from '@/lib/api';
 import { getRefreshToken } from '@/lib/session';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const refreshToken = await getRefreshToken();
 
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     // intentionally swallow logout errors and clear local session anyway
   }
 
-  const response = NextResponse.redirect(new URL('/login', request.url));
+  const response = new NextResponse(null, { status: 204 });
   response.cookies.delete('pawactivity_access_token');
   response.cookies.delete('pawactivity_refresh_token');
 
