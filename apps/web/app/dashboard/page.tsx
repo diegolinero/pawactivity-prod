@@ -32,8 +32,9 @@ function toTimezoneDateKey(date: Date, timezone: string) {
 }
 
 function shiftDateKey(dateKey: string, days: number) {
+  const DAY_IN_MS = 24 * 60 * 60 * 1000;
   const date = new Date(`${dateKey}T12:00:00.000Z`);
-  const shifted = new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+  const shifted = new Date(date.getTime() + days * DAY_IN_MS);
   const year = shifted.getUTCFullYear();
   const month = String(shifted.getUTCMonth() + 1).padStart(2, '0');
   const day = String(shifted.getUTCDate()).padStart(2, '0');
@@ -85,9 +86,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const pet = pets.find((item) => item.id === selectedPetId) ?? firstPet;
 
-  const timezone = user.timezone ?? 'UTC';
-  const { today, yesterday, weekStart } = getDashboardDateKeys(timezone);
-  const timezoneParam = encodeURIComponent(timezone);
+  const userTimezone = user.timezone ?? 'UTC';
+  const { today, yesterday, weekStart } = getDashboardDateKeys(userTimezone);
+  const timezoneParam = encodeURIComponent(userTimezone);
 
   const activeDevice = pet.activeDevice;
 
