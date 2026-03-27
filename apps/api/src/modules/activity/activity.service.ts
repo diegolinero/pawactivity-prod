@@ -5,6 +5,7 @@ import { PetsService } from '../pets/pets.service';
 @Injectable()
 export class ActivityService {
   private readonly logger = new Logger(ActivityService.name);
+  private readonly DAY_IN_MS = 24 * 60 * 60 * 1000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -14,10 +15,12 @@ export class ActivityService {
   async getDaily(userId: string, petId: string, date?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
-    const targetDateKey = date ? this.normalizeDateKey(date) : this.getCurrentDateKey(resolvedTimezone);
+    const targetDateKey = this.resolveTargetDateKey(date, resolvedTimezone);
     const targetDate = this.toSummaryDate(targetDateKey);
 
-    this.logger.log(`daily query petId=${petId} timezone=${resolvedTimezone} dateKey=${targetDateKey} summaryDate=${targetDateKey}`);
+    this.logger.log(
+      `method=getDaily petId=${petId} timezone=${resolvedTimezone} localDateKey=${targetDateKey} summaryDate=${targetDateKey}`,
+    );
 
     const summary = await this.prisma.activityDailySummary.findUnique({
       where: {
@@ -39,9 +42,7 @@ export class ActivityService {
     const queryStartDate = this.toSummaryDate(startDateKey);
     const queryEndDate = this.toSummaryDate(this.shiftDateKey(startDateKey, 6));
 
-    this.logger.log(
-      `weekly query petId=${petId} timezone=${resolvedTimezone} startDate=${startDateKey} endDate=${this.toDateKey(queryEndDate)} todayKey=${todayDateKey}`,
-    );
+    this.logger.log(`method=getWeekly petId=${petId} timezone=${resolvedTimezone} localDateKey=${todayDateKey} summaryStartDate=${startDateKey} summaryEndDate=${this.toDateKey(queryEndDate)}`);
 
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
@@ -81,9 +82,7 @@ export class ActivityService {
       monthNumber === 12 ? `${year + 1}-01` : `${year}-${String(monthNumber + 1).padStart(2, '0')}`;
     const endDateKey = this.shiftDateKey(`${nextMonth}-01`, -1);
 
-    this.logger.log(
-      `monthly query petId=${petId} timezone=${resolvedTimezone} month=${targetMonth} startDate=${startDateKey} endDate=${endDateKey}`,
-    );
+    this.logger.log(`method=getMonthly petId=${petId} timezone=${resolvedTimezone} localDateKey=${this.getCurrentDateKey(resolvedTimezone)} month=${targetMonth} summaryStartDate=${startDateKey} summaryEndDate=${endDateKey}`);
 
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
@@ -126,9 +125,7 @@ export class ActivityService {
       startDateKey = `${todayDateKey.slice(0, 7)}-01`;
     }
 
-    this.logger.log(
-      `history query petId=${petId} timezone=${resolvedTimezone} range=${range} startDate=${startDateKey} endDate=${todayDateKey}`,
-    );
+    this.logger.log(`method=getHistory petId=${petId} timezone=${resolvedTimezone} range=${range} localDateKey=${todayDateKey} summaryStartDate=${startDateKey} summaryEndDate=${todayDateKey}`);
 
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
@@ -147,13 +144,11 @@ export class ActivityService {
   async getTimeline(userId: string, petId: string, date?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
-    const targetDate = date ? this.normalizeDateKey(date) : this.getCurrentDateKey(resolvedTimezone);
+    const targetDate = this.resolveTargetDateKey(date, resolvedTimezone);
     const utcStart = new Date(`${this.shiftDateKey(targetDate, -1)}T00:00:00.000Z`);
     const utcEnd = new Date(`${this.shiftDateKey(targetDate, 1)}T23:59:59.999Z`);
 
-    this.logger.log(
-      `timeline query petId=${petId} timezone=${resolvedTimezone} dateKey=${targetDate} windowStart=${utcStart.toISOString()} windowEnd=${utcEnd.toISOString()}`,
-    );
+    this.logger.log(`method=getTimeline petId=${petId} timezone=${resolvedTimezone} localDateKey=${targetDate} queryWindowStart=${utcStart.toISOString()} queryWindowEnd=${utcEnd.toISOString()}`);
 
     const events = await this.prisma.activityEvent.findMany({
       where: {
@@ -224,7 +219,7 @@ export class ActivityService {
 
   private shiftDateKey(dateKey: string, diffDays: number) {
     const date = this.parseDateKey(dateKey);
-    const shifted = new Date(date.getTime() + diffDays * 24 * 60 * 60 * 1000);
+    const shifted = new Date(date.getTime() + diffDays * this.DAY_IN_MS);
     return this.formatDateKey(shifted);
   }
 
@@ -238,6 +233,10 @@ export class ActivityService {
 
   private getCurrentDateKey(timezone: string) {
     return this.toTimezoneDateKey(new Date(), timezone);
+  }
+
+  private resolveTargetDateKey(date: string | undefined, timezone: string) {
+    return date ? this.normalizeDateKey(date) : this.getCurrentDateKey(timezone);
   }
 
   private parseDateKey(dateKey: string) {

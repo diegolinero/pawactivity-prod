@@ -40,6 +40,15 @@ function shiftDateKey(dateKey: string, days: number) {
   return `${year}-${month}-${day}`;
 }
 
+function getDashboardDateKeys(timezone: string) {
+  const today = toTimezoneDateKey(new Date(), timezone);
+  return {
+    today,
+    yesterday: shiftDateKey(today, -1),
+    weekStart: shiftDateKey(today, -6),
+  };
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ petId?: string }> }) {
   const token = await getAccessToken();
   if (!token) redirect('/login');
@@ -77,9 +86,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const pet = pets.find((item) => item.id === selectedPetId) ?? firstPet;
 
   const timezone = user.timezone ?? 'UTC';
-  const today = toTimezoneDateKey(new Date(), timezone);
-  const yesterday = shiftDateKey(today, -1);
-  const weekStart = shiftDateKey(today, -6);
+  const { today, yesterday, weekStart } = getDashboardDateKeys(timezone);
   const timezoneParam = encodeURIComponent(timezone);
 
   const activeDevice = pet.activeDevice;

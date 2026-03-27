@@ -25,7 +25,6 @@ export class ActivityController {
     @Query('startDate') startDate?: string,
     @Query('timezone') timezone?: string,
   ) {
-    // timezone-aware weekly range (aligned with mobile summary_date keys)
     return this.activityService.getWeekly(user.id, petId, startDate, timezone);
   }
 
