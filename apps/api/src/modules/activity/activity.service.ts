@@ -16,10 +16,10 @@ export class ActivityService {
     await this.petsService.ensureOwnership(userId, petId);
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetDateKey = this.resolveTargetDateKey(date, resolvedTimezone);
-    const targetDate = this.toSummaryDate(targetDateKey);
+    const targetDate = this.dateKeyToUtcMidnight(targetDateKey);
 
     this.logger.log(
-      `method=getDaily petId=${petId} timezone=${resolvedTimezone} localDateKey=${targetDateKey} summaryDate=${targetDateKey}`,
+      `method=getDaily petId=${petId} timezone=${resolvedTimezone} localDateKey=${targetDateKey} summary_date=${targetDateKey}`,
     );
 
     const summary = await this.prisma.activityDailySummary.findUnique({
@@ -37,12 +37,13 @@ export class ActivityService {
   async getWeekly(userId: string, petId: string, startDate?: string, timezone?: string) {
     await this.petsService.ensureOwnership(userId, petId);
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
-    const todayDateKey = this.getCurrentDateKey(resolvedTimezone);
+    const todayDateKey = this.getTodayDateKey(resolvedTimezone);
     const startDateKey = startDate ? this.normalizeDateKey(startDate) : this.shiftDateKey(todayDateKey, -6);
-    const queryStartDate = this.toSummaryDate(startDateKey);
-    const queryEndDate = this.toSummaryDate(this.shiftDateKey(startDateKey, 6));
+    const queryEndDateKey = this.shiftDateKey(startDateKey, 6);
+    const queryStartDate = this.dateKeyToUtcMidnight(startDateKey);
+    const queryEndDate = this.dateKeyToUtcMidnight(queryEndDateKey);
 
-    this.logger.log(`method=getWeekly petId=${petId} timezone=${resolvedTimezone} localDateKey=${todayDateKey} summaryStartDate=${startDateKey} summaryEndDate=${this.toDateKey(queryEndDate)}`);
+    this.logger.log(`method=getWeekly petId=${petId} timezone=${resolvedTimezone} localDateKey=${todayDateKey} summary_start_date=${startDateKey} summary_end_date=${queryEndDateKey}`);
 
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
@@ -55,7 +56,7 @@ export class ActivityService {
       orderBy: { summaryDate: 'asc' },
     });
 
-    const summariesByDate = new Map(summaries.map((summary) => [this.toDateKey(summary.summaryDate), summary]));
+    const summariesByDate = new Map(summaries.map((summary) => [this.toUtcDateKey(summary.summaryDate), summary]));
     const days = this.fillDateRange(startDateKey, 7).map((dateKey) => {
       const current = summariesByDate.get(dateKey);
       return this.serializeSummary(current, dateKey, resolvedTimezone);
@@ -63,7 +64,7 @@ export class ActivityService {
 
     return {
       startDate: startDateKey,
-      endDate: this.toDateKey(queryEndDate),
+      endDate: queryEndDateKey,
       days,
     };
   }
@@ -72,24 +73,19 @@ export class ActivityService {
     await this.petsService.ensureOwnership(userId, petId);
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
     const targetMonth = this.normalizeMonth(month, resolvedTimezone);
-    const startDateKey = `${targetMonth}-01`;
-    const [year, monthNumber] = targetMonth.split('-').map(Number);
-    if (!year || !monthNumber) {
-      throw new BadRequestException('Invalid month');
-    }
+    const monthReferenceDateKey = `${targetMonth}-01`;
+    const startDateKey = this.getMonthStartDateKey(monthReferenceDateKey);
+    const endDateKey = this.getMonthEndDateKey(monthReferenceDateKey);
+    const localDateKey = this.getTodayDateKey(resolvedTimezone);
 
-    const nextMonth =
-      monthNumber === 12 ? `${year + 1}-01` : `${year}-${String(monthNumber + 1).padStart(2, '0')}`;
-    const endDateKey = this.shiftDateKey(`${nextMonth}-01`, -1);
-
-    this.logger.log(`method=getMonthly petId=${petId} timezone=${resolvedTimezone} localDateKey=${this.getCurrentDateKey(resolvedTimezone)} month=${targetMonth} summaryStartDate=${startDateKey} summaryEndDate=${endDateKey}`);
+    this.logger.log(`method=getMonthly petId=${petId} timezone=${resolvedTimezone} localDateKey=${localDateKey} month=${targetMonth} summary_start_date=${startDateKey} summary_end_date=${endDateKey}`);
 
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
         petId,
         summaryDate: {
-          gte: this.toSummaryDate(startDateKey),
-          lte: this.toSummaryDate(endDateKey),
+          gte: this.dateKeyToUtcMidnight(startDateKey),
+          lte: this.dateKeyToUtcMidnight(endDateKey),
         },
       },
       orderBy: { summaryDate: 'asc' },
@@ -97,7 +93,7 @@ export class ActivityService {
 
     return {
       month: targetMonth,
-      days: summaries.map((summary) => this.serializeSummary(summary, this.toDateKey(summary.summaryDate), resolvedTimezone)),
+      days: summaries.map((summary) => this.serializeSummary(summary, this.toUtcDateKey(summary.summaryDate), resolvedTimezone)),
       totals: summaries.reduce(
         (acc, summary) => {
           acc.restSeconds += summary.restSeconds;
@@ -116,29 +112,29 @@ export class ActivityService {
     this.assertValidRange(range);
 
     const resolvedTimezone = await this.resolveTimezone(userId, petId, timezone);
-    const todayDateKey = this.getCurrentDateKey(resolvedTimezone);
+    const todayDateKey = this.getTodayDateKey(resolvedTimezone);
     let startDateKey = todayDateKey;
 
     if (range === 'week') {
       startDateKey = this.shiftDateKey(todayDateKey, -6);
     } else if (range === 'month') {
-      startDateKey = `${todayDateKey.slice(0, 7)}-01`;
+      startDateKey = this.getMonthStartDateKey(todayDateKey);
     }
 
-    this.logger.log(`method=getHistory petId=${petId} timezone=${resolvedTimezone} range=${range} localDateKey=${todayDateKey} summaryStartDate=${startDateKey} summaryEndDate=${todayDateKey}`);
+    this.logger.log(`method=getHistory petId=${petId} timezone=${resolvedTimezone} range=${range} localDateKey=${todayDateKey} summary_start_date=${startDateKey} summary_end_date=${todayDateKey}`);
 
     const summaries = await this.prisma.activityDailySummary.findMany({
       where: {
         petId,
         summaryDate: {
-          gte: this.toSummaryDate(startDateKey),
-          lte: this.toSummaryDate(todayDateKey),
+          gte: this.dateKeyToUtcMidnight(startDateKey),
+          lte: this.dateKeyToUtcMidnight(todayDateKey),
         },
       },
       orderBy: { summaryDate: 'desc' },
     });
 
-    return summaries.map((summary) => this.serializeSummary(summary, this.toDateKey(summary.summaryDate), resolvedTimezone));
+    return summaries.map((summary) => this.serializeSummary(summary, this.toUtcDateKey(summary.summaryDate), resolvedTimezone));
   }
 
   async getTimeline(userId: string, petId: string, date?: string, timezone?: string) {
@@ -190,11 +186,11 @@ export class ActivityService {
       throw new BadRequestException('Invalid date');
     }
 
-    const normalized = this.parseDateKey(input);
+    const normalized = this.dateKeyToUtcNoon(input);
     if (Number.isNaN(normalized.getTime())) {
       throw new BadRequestException('Invalid date');
     }
-    if (this.formatDateKey(normalized) !== input) {
+    if (this.toUtcDateKey(normalized) !== input) {
       throw new BadRequestException('Invalid date');
     }
 
@@ -203,7 +199,7 @@ export class ActivityService {
 
   private normalizeMonth(month: string | undefined, timezone: string) {
     if (!month) {
-      return this.getCurrentDateKey(timezone).slice(0, 7);
+      return this.getTodayDateKey(timezone).slice(0, 7);
     }
 
     if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -218,36 +214,42 @@ export class ActivityService {
   }
 
   private shiftDateKey(dateKey: string, diffDays: number) {
-    const date = this.parseDateKey(dateKey);
+    const date = this.dateKeyToUtcNoon(dateKey);
     const shifted = new Date(date.getTime() + diffDays * this.DAY_IN_MS);
-    return this.formatDateKey(shifted);
+    return this.toUtcDateKey(shifted);
   }
 
-  private toSummaryDate(dateKey: string) {
+  private dateKeyToUtcMidnight(dateKey: string) {
     return new Date(`${dateKey}T00:00:00.000Z`);
   }
 
-  private toDateKey(date: Date) {
-    return this.formatDateKey(date);
-  }
-
-  private getCurrentDateKey(timezone: string) {
+  private getTodayDateKey(timezone: string) {
     return this.toTimezoneDateKey(new Date(), timezone);
   }
 
   private resolveTargetDateKey(date: string | undefined, timezone: string) {
-    return date ? this.normalizeDateKey(date) : this.getCurrentDateKey(timezone);
+    return date ? this.normalizeDateKey(date) : this.getTodayDateKey(timezone);
   }
 
-  private parseDateKey(dateKey: string) {
+  private dateKeyToUtcNoon(dateKey: string) {
     return new Date(`${dateKey}T12:00:00.000Z`);
   }
 
-  private formatDateKey(date: Date) {
+  private toUtcDateKey(date: Date) {
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     const day = String(date.getUTCDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private getMonthStartDateKey(dateKey: string) {
+    return `${dateKey.slice(0, 7)}-01`;
+  }
+
+  private getMonthEndDateKey(dateKey: string) {
+    const monthStartDateKey = this.getMonthStartDateKey(dateKey);
+    const nextMonthDateKey = this.shiftDateKey(monthStartDateKey, 32);
+    return this.shiftDateKey(this.getMonthStartDateKey(nextMonthDateKey), -1);
   }
 
   private assertValidRange(range: string) {
