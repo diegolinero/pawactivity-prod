@@ -4,6 +4,7 @@ import { RateLimit } from '../../common/decorators/rate-limit.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RateLimitGuard } from '../../common/guards/rate-limit.guard';
 import { AuthService } from './auth.service';
+import { Throttle } from '@nestjs/throttler';
 import { LoginDto } from './dto/login.dto';
 import { LogoutDto } from './dto/logout.dto';
 import { RefreshDto } from './dto/refresh.dto';
@@ -25,6 +26,7 @@ export class AuthController {
     return this.authService.register(body, { userAgent, deviceName, ipAddress });
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   @UseGuards(RateLimitGuard)
   @RateLimit({ keyPrefix: 'auth-login', limit: 10, windowMs: 60_000, scope: 'ip' })

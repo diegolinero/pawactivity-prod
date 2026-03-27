@@ -35,18 +35,32 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const selectedPetId = params.petId && pets.some((pet) => pet.id === params.petId) ? params.petId : pets[0].id;
-  const pet = pets.find((item) => item.id === selectedPetId) ?? pets[0];
+  const firstPet = pets[0];
+
+  if (!firstPet) {
+    redirect('/pets');
+  }
+
+  const selectedPetId =
+    params.petId && pets.some((pet) => pet.id === params.petId)
+      ? params.petId
+      : firstPet.id;
+
+  const pet = pets.find((item) => item.id === selectedPetId) ?? firstPet;
+
+ 
   const today = new Date().toISOString().slice(0, 10);
   const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
   const weekStart = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+
+  const activeDevice = pet.activeDevice;
 
   const [daily, previousDaily, weekly, timeline, deviceStatus] = await withSessionRedirect(() => Promise.all([
     apiFetchWithSession<DailyActivitySummary>(`/pets/${pet.id}/activity/daily?date=${today}`),
     apiFetchWithSession<DailyActivitySummary>(`/pets/${pet.id}/activity/daily?date=${yesterday}`),
     apiFetchWithSession<WeeklyActivityResponse>(`/pets/${pet.id}/activity/weekly?startDate=${weekStart}`),
     apiFetchWithSession<ActivityTimelineItem[]>(`/pets/${pet.id}/activity/timeline?date=${today}&timezone=${encodeURIComponent(user.timezone)}`),
-    pet.activeDevice ? apiFetchWithSession<DeviceSummary>(`/devices/${pet.activeDevice.id}`) : Promise.resolve(null),
+    activeDevice ? apiFetchWithSession<DeviceSummary>(`/devices/${activeDevice.id}`) : Promise.resolve(null),
   ]));
 
   const hasData = daily.hasData || weekly.days.some((day) => day.hasData) || timeline.length > 0;

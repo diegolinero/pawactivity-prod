@@ -209,15 +209,17 @@ export class AuthService {
       return;
     }
 
-    const allowlist = (this.configService.get<string>('REGISTRATION_EMAIL_ALLOWLIST') ?? '')
-      .split(',')
-      .map((value) => value.trim().toLowerCase())
-      .filter(Boolean);
+   const allowlist = (this.configService.get<string>('REGISTRATION_EMAIL_ALLOWLIST') ?? '')
+     .split(',')
+     .map((value) => value.trim().toLowerCase())
+     .filter(Boolean);
 
-    if (!allowlist.includes(email.toLowerCase())) {
-      this.metricsService.increment('auth_register_blocked_total');
-      throw new ForbiddenException('Registration is currently limited');
-    }
+   if (allowlist.length > 0 && !allowlist.includes(email.toLowerCase())) {
+     this.metricsService.increment('auth_register_blocked_total');
+     throw new ForbiddenException('Registration is currently limited');
+   }
+
+   
   }
 
   private addDuration(duration: string) {

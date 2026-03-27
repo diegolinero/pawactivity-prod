@@ -21,9 +21,16 @@ export default async function PetDetailPage({ params }: { params: Promise<{ petI
     apiFetchWithSession<WeeklyActivityResponse>(`/pets/${petId}/activity/weekly?startDate=${new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10)}`),
   ]));
 
-  const deviceStatus = pet.activeDevice
-    ? await withSessionRedirect(() => apiFetchWithSession<DeviceSummary>(`/devices/${pet.activeDevice.id}/status`))
+  
+  const activeDevice = pet.activeDevice;
+
+  const deviceStatus = activeDevice
+    ? await withSessionRedirect(() =>
+        apiFetchWithSession<DeviceSummary>(`/devices/${activeDevice.id}/status`)
+      )
     : null;
+    
+
   const availableDevices = devices.filter((device) => !device.assignedPet || device.assignedPet.id === pet.id);
   const weeklyTotals = weeklySummary.days.reduce(
     (acc, day) => {

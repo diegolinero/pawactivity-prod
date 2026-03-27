@@ -31,7 +31,17 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
   }
 
   const range = params.range ?? 'week';
-  const petId = params.petId && pets.some((pet) => pet.id === params.petId) ? params.petId : pets[0].id;
+  const firstPet = pets[0];
+
+  if (!firstPet) {
+    redirect('/pets');
+  }
+
+  const petId =
+    params.petId && pets.some((pet) => pet.id === params.petId)
+      ? params.petId
+      : firstPet.id;
+
   const history = await withSessionRedirect(() => apiFetchWithSession<DailyActivitySummary[]>(`/pets/${petId}/activity/history?range=${range}`));
 
   return (
