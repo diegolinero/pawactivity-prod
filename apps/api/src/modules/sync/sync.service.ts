@@ -5,6 +5,7 @@ import { MetricsService } from '../metrics/metrics.service';
 import { PetsService } from '../pets/pets.service';
 import { DevicesService } from '../devices/devices.service';
 import { SyncActivityDto } from './dto/sync-activity.dto';
+import { SyncActivitySummaryDto } from './dto/sync-activity-summary.dto';
 
 @Injectable()
 export class SyncService {
@@ -163,6 +164,175 @@ export class SyncService {
         skippedDuplicates: response.skippedDuplicates,
       }));
     }
+
+    return response;
+  }
+
+
+  async syncActivitySummary(userId: string, dto: SyncActivitySummaryDto) {
+    this.logger.log(JSON.stringify({
+      event: 'activity_summary_sync_received',
+      userId,
+      petId: dto.petId,
+      deviceId: dto.deviceId,
+      generatedAt: dto.generatedAt,
+      summaryDate: dto.summaryDate,
+      timezone: dto.timezone,
+      restSeconds: dto.restSeconds,
+      walkSeconds: dto.walkSeconds,
+      runSeconds: dto.runSeconds,
+      totalActiveSeconds: dto.totalActiveSeconds,
+    }));
+    this.metricsService.increment('activity_summary_sync_received_total');
+
+    await this.petsService.ensureOwnership(userId, dto.petId);
+    await this.devicesService.getById(userId, dto.deviceId);
+
+    const activeAssignment = await this.prisma.petDevice.findFirst({
+      where: {
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        isActive: true,
+      },
+    });
+
+    if (!activeAssignment) {
+      this.metricsService.increment('activity_summary_sync_error_total');
+      this.logger.warn(JSON.stringify({
+        event: 'activity_summary_sync_rejected',
+        userId,
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        summaryDate: dto.summaryDate,
+        timezone: dto.timezone,
+        reason: 'device_not_assigned',
+      }));
+      throw new ForbiddenException('Device is not actively assigned to this pet');
+    }
+
+    const generatedAt = new Date(dto.generatedAt);
+    if (Number.isNaN(generatedAt.getTime())) {
+      this.metricsService.increment('activity_summary_sync_error_total');
+      this.logger.warn(JSON.stringify({
+        event: 'activity_summary_sync_rejected',
+        userId,
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        summaryDate: dto.summaryDate,
+        timezone: dto.timezone,
+        reason: 'invalid_generated_at',
+      }));
+      throw new BadRequestException('Invalid generatedAt');
+    }
+
+    this.assertValidTimezone(dto.timezone);
+
+    const summaryDate = new Date(`${dto.summaryDate}T00:00:00.000Z`);
+    if (Number.isNaN(summaryDate.getTime()) || summaryDate.toISOString().slice(0, 10) !== dto.summaryDate) {
+      this.metricsService.increment('activity_summary_sync_error_total');
+      this.logger.warn(JSON.stringify({
+        event: 'activity_summary_sync_rejected',
+        userId,
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        summaryDate: dto.summaryDate,
+        timezone: dto.timezone,
+        reason: 'invalid_summary_date',
+      }));
+      throw new BadRequestException('Invalid summaryDate');
+    }
+
+    const computedTotalActiveSeconds = dto.walkSeconds + dto.runSeconds;
+    if (dto.totalActiveSeconds !== computedTotalActiveSeconds) {
+      this.logger.warn(JSON.stringify({
+        event: 'activity_summary_sync_total_active_mismatch',
+        userId,
+        petId: dto.petId,
+        deviceId: dto.deviceId,
+        summaryDate: dto.summaryDate,
+        timezone: dto.timezone,
+        providedTotalActiveSeconds: dto.totalActiveSeconds,
+        computedTotalActiveSeconds,
+      }));
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      await tx.activityDailySummary.upsert({
+        where: {
+          petId_summaryDate: {
+            petId: dto.petId,
+            summaryDate,
+          },
+        },
+        update: {
+          timezone: dto.timezone,
+          restSeconds: dto.restSeconds,
+          walkSeconds: dto.walkSeconds,
+          runSeconds: dto.runSeconds,
+          totalActiveSeconds: computedTotalActiveSeconds,
+        },
+        create: {
+          petId: dto.petId,
+          summaryDate,
+          timezone: dto.timezone,
+          restSeconds: dto.restSeconds,
+          walkSeconds: dto.walkSeconds,
+          runSeconds: dto.runSeconds,
+          totalActiveSeconds: computedTotalActiveSeconds,
+        },
+      });
+
+      await tx.device.update({
+        where: { id: dto.deviceId },
+        data: {
+          batteryLevel: dto.batteryLevel,
+          lastSeenAt: generatedAt,
+          status: 'assigned',
+        },
+      });
+
+      return tx.syncLog.create({
+        data: {
+          userId,
+          petId: dto.petId,
+          deviceId: dto.deviceId,
+          generatedAt,
+          timezone: dto.timezone,
+          recordsReceived: 1,
+          status: 'success',
+          syncedAt: new Date(),
+          errorMessage: dto.totalActiveSeconds === computedTotalActiveSeconds
+            ? null
+            : 'totalActiveSeconds mismatch; backend value recalculated from walk+run',
+        },
+      });
+    });
+
+    const response = {
+      success: true,
+      syncLogId: result.id,
+      summaryDate: dto.summaryDate,
+      timezone: dto.timezone,
+      totals: {
+        restSeconds: dto.restSeconds,
+        walkSeconds: dto.walkSeconds,
+        runSeconds: dto.runSeconds,
+        totalActiveSeconds: computedTotalActiveSeconds,
+      },
+      syncedAt: result.syncedAt.toISOString(),
+    };
+
+    this.logger.log(JSON.stringify({
+      event: 'activity_summary_sync_success',
+      userId,
+      petId: dto.petId,
+      deviceId: dto.deviceId,
+      syncLogId: response.syncLogId,
+      summaryDate: response.summaryDate,
+      timezone: response.timezone,
+      totals: response.totals,
+    }));
+    this.metricsService.increment('activity_summary_sync_success_total');
 
     return response;
   }
