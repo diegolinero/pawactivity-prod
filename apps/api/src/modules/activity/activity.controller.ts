@@ -13,8 +13,9 @@ export class ActivityController {
     @CurrentUser() user: { id: string },
     @Param('petId') petId: string,
     @Query('date') date?: string,
+    @Query('timezone') timezone?: string,
   ) {
-    return this.activityService.getDaily(user.id, petId, date);
+    return this.activityService.getDaily(user.id, petId, date, timezone);
   }
 
   @Get('weekly')
@@ -22,8 +23,9 @@ export class ActivityController {
     @CurrentUser() user: { id: string },
     @Param('petId') petId: string,
     @Query('startDate') startDate?: string,
+    @Query('timezone') timezone?: string,
   ) {
-    return this.activityService.getWeekly(user.id, petId, startDate);
+    return this.activityService.getWeekly(user.id, petId, startDate, timezone);
   }
 
   @Get('monthly')
@@ -31,8 +33,9 @@ export class ActivityController {
     @CurrentUser() user: { id: string },
     @Param('petId') petId: string,
     @Query('month') month?: string,
+    @Query('timezone') timezone?: string,
   ) {
-    return this.activityService.getMonthly(user.id, petId, month);
+    return this.activityService.getMonthly(user.id, petId, month, timezone);
   }
 
   @Get('history')
@@ -40,8 +43,9 @@ export class ActivityController {
     @CurrentUser() user: { id: string },
     @Param('petId') petId: string,
     @Query('range') range?: 'today' | 'week' | 'month',
+    @Query('timezone') timezone?: string,
   ) {
-    return this.activityService.getHistory(user.id, petId, range);
+    return this.activityService.getHistory(user.id, petId, range, timezone);
   }
 
   @Get('timeline')
