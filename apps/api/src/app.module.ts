@@ -10,6 +10,7 @@ import { SyncModule } from './modules/sync/sync.module';
 import { HealthModule } from './modules/health/health.module';
 import { MetricsModule } from './modules/metrics/metrics.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PetRecordsModule } from './modules/pet-records/pet-records.module';
 
 
 
@@ -34,6 +35,7 @@ import { PrismaModule } from './prisma/prisma.module';
     PetsModule,
     DevicesModule,
     ActivityModule,
+    PetRecordsModule,
     SyncModule,
     HealthModule,
   ],

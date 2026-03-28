@@ -100,9 +100,88 @@ model Pet {
   activityEvents ActivityEvent[]
   dailySummaries ActivityDailySummary[]
   syncLogs       SyncLog[]
+  weightRecords  PetWeightRecord[]
+  vaccinations   PetVaccination[]
+  dewormings     PetDeworming[]
+  vetVisits      PetVetVisit[]
 
   @@index([userId])
   @@map("pets")
+}
+
+model PetWeightRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  petId      String   @map("pet_id") @db.Uuid
+  weightKg   Decimal  @map("weight_kg") @db.Decimal(5, 2)
+  measuredAt DateTime @map("measured_at")
+  note       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+  pet        Pet      @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId, measuredAt(sort: Desc)])
+  @@index([petId, deletedAt])
+  @@map("pet_weight_records")
+}
+
+model PetVaccination {
+  id               String    @id @default(uuid()) @db.Uuid
+  petId            String    @map("pet_id") @db.Uuid
+  vaccineName      String    @map("vaccine_name") @db.VarChar(160)
+  applicationDate  DateTime  @map("application_date") @db.Date
+  nextDueDate      DateTime? @map("next_due_date") @db.Date
+  veterinarianName String?   @map("veterinarian_name") @db.VarChar(120)
+  clinicName       String?   @map("clinic_name") @db.VarChar(120)
+  note             String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+  pet              Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId, applicationDate(sort: Desc)])
+  @@index([petId, deletedAt])
+  @@map("pet_vaccinations")
+}
+
+model PetDeworming {
+  id               String    @id @default(uuid()) @db.Uuid
+  petId            String    @map("pet_id") @db.Uuid
+  productName      String    @map("product_name") @db.VarChar(160)
+  applicationDate  DateTime  @map("application_date") @db.Date
+  nextDueDate      DateTime? @map("next_due_date") @db.Date
+  dose             String?   @db.VarChar(120)
+  veterinarianName String?   @map("veterinarian_name") @db.VarChar(120)
+  clinicName       String?   @map("clinic_name") @db.VarChar(120)
+  note             String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+  pet              Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId, applicationDate(sort: Desc)])
+  @@index([petId, deletedAt])
+  @@map("pet_dewormings")
+}
+
+model PetVetVisit {
+  id               String    @id @default(uuid()) @db.Uuid
+  petId            String    @map("pet_id") @db.Uuid
+  visitDate        DateTime  @map("visit_date") @db.Date
+  veterinarianName String?   @map("veterinarian_name") @db.VarChar(120)
+  clinicName       String?   @map("clinic_name") @db.VarChar(120)
+  reason           String?
+  diagnosis        String?
+  treatment        String?
+  note             String?
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+  pet              Pet       @relation(fields: [petId], references: [id], onDelete: Cascade)
+
+  @@index([petId, visitDate(sort: Desc)])
+  @@index([petId, deletedAt])
+  @@map("pet_vet_visits")
 }
 
 model Device {
