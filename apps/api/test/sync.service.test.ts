@@ -30,7 +30,8 @@ function createSyncService() {
 
   const petsService = { ensureOwnership: async () => ({ id: 'pet-1' }) } as any;
   const devicesService = { getById: async () => ({ id: 'device-1' }) } as any;
-  const service = new SyncService(prisma, petsService, devicesService);
+  const metricsService = { increment: () => undefined, trackSync: () => undefined } as any;
+  const service = new SyncService(prisma, petsService, devicesService, metricsService);
   return service;
 }
 

@@ -62,6 +62,66 @@ export type PetSummary = {
   activeDevice: DeviceSummary | null;
 };
 
+export type PetWeightRecord = {
+  id: string;
+  petId: string;
+  weightKg: string;
+  measuredAt: string;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetVaccination = {
+  id: string;
+  petId: string;
+  vaccineName: string;
+  applicationDate: string;
+  nextDueDate: string | null;
+  veterinarianName: string | null;
+  clinicName: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetDeworming = {
+  id: string;
+  petId: string;
+  productName: string;
+  applicationDate: string;
+  nextDueDate: string | null;
+  dose: string | null;
+  veterinarianName: string | null;
+  clinicName: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetVetVisit = {
+  id: string;
+  petId: string;
+  visitDate: string;
+  veterinarianName: string | null;
+  clinicName: string | null;
+  reason: string | null;
+  diagnosis: string | null;
+  treatment: string | null;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PetProfileResponse = {
+  petId: string;
+  currentWeightKg: string | null;
+  weightHistory: PetWeightRecord[];
+  vaccinations: PetVaccination[];
+  dewormings: PetDeworming[];
+  vetVisits: PetVetVisit[];
+};
+
 export type DailyActivitySummary = {
   date: string;
   timezone: string;
